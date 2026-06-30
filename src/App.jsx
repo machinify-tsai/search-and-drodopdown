@@ -217,7 +217,7 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
       aria-autocomplete="list"
       aria-activedescendant={active >= 0 ? `${uid}-opt-${active}` : undefined}
       onChange={(e) => { setQuery(e.target.value); setOpen(true); setActive(-1); }}
-      onFocus={() => setOpen(true)}
+      onFocus={(e) => { setOpen(true); if (select === "single" && single) e.target.select(); }}
       onKeyDown={onKeyDown}
     />
   );
@@ -332,67 +332,98 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
 /* =================================================================== *
  * DualList — transfer menu (two typable, query-highlighted panels)
  * =================================================================== */
-function PanelSearch({ query, setQuery, placeholder }) {
-  return (
-    <div className="sp-field sp-field-sm">
-      <div className="sp-field-inner">
-        <input className="sp-input" value={query} placeholder={placeholder}
-          onChange={(e) => setQuery(e.target.value)} />
-      </div>
-      <div className="sp-trail"><span className="sp-icon-btn" aria-hidden><Search /></span></div>
-    </div>
-  );
-}
-
 function DualList({ options }) {
   const [selected, setSelected] = useState(["Robin", "Swift"]);
-  const [qa, setQa] = useState("");
-  const [qs, setQs] = useState("");
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef(null);
+  const inputRef = useRef(null);
 
   const available = options.filter((o) => !selected.includes(o));
-  const availShown = available.filter((o) => o.toLowerCase().includes(qa.trim().toLowerCase()));
-  const selShown = selected.filter((o) => o.toLowerCase().includes(qs.trim().toLowerCase()));
+  const q = query.trim().toLowerCase();
+  const availShown = q ? available.filter((o) => o.toLowerCase().includes(q)) : available;
+  const selShown = q ? selected.filter((o) => o.toLowerCase().includes(q)) : selected;
 
   const move = (o) => setSelected((s) => [...s, o]);
   const back = (o) => setSelected((s) => s.filter((x) => x !== o));
+  const selectAll = () => setSelected((s) => [...s, ...availShown.filter((o) => !s.includes(o))]);
+  const deselectAll = () => setSelected((s) => s.filter((x) => !selShown.includes(x)));
+
+  const onBlur = (e) => {
+    if (!rootRef.current?.contains(e.relatedTarget)) { setOpen(false); }
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === "Escape") { setOpen(false); }
+  };
+
+  const displayText = selected.length > 0 ? `${selected.length} selected` : "";
 
   return (
-    <div className="sp-dual">
-      <div className="sp-pane">
-        <div className="sp-pane-head">
-          <span className="sp-pane-title">Available</span>
-          <span className="sp-pane-count">{available.length}</span>
+    <div className="sp-field-wrap" ref={rootRef} onBlur={onBlur}>
+      <div className={`sp-field ${open ? "is-open" : ""}`} role="combobox"
+           aria-expanded={open} aria-haspopup="listbox">
+        <div className="sp-field-inner"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) { e.preventDefault(); inputRef.current?.focus(); setOpen(true); }
+          }}>
+          {selected.length > 0 && (
+            <span className="sp-dual-badge" onMouseDown={(e) => { e.preventDefault(); inputRef.current?.focus(); setOpen(true); }}>
+              {displayText}
+            </span>
+          )}
+          <input
+            ref={inputRef}
+            className="sp-input"
+            value={query}
+            placeholder={selected.length > 0 ? "" : "Data Text"}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKeyDown}
+          />
         </div>
-        <PanelSearch query={qa} setQuery={setQa} placeholder="Filter available…" />
-        <ul className="sp-pane-list" role="listbox" aria-label="Available">
-          {availShown.length ? availShown.map((o) => (
-            <li key={o} role="option" aria-selected={false} className="sp-pane-item" tabIndex={0}
-              onClick={() => move(o)}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), move(o))}>
-              <span className="sp-opt-label"><Mark text={o} query={qa} /></span>
-              <Arrow className="sp-pane-arrow" />
-            </li>
-          )) : <li className="sp-empty sp-empty-sm">No results.</li>}
-        </ul>
+        <div className="sp-trail">
+          <button type="button" className={`sp-icon-btn ${open ? "is-up" : ""}`}
+            tabIndex={-1} aria-label="Toggle menu"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => { setOpen((o) => !o); inputRef.current?.focus(); }}>
+            <Chevron />
+          </button>
+        </div>
       </div>
 
-      <div className="sp-pane">
-        <div className="sp-pane-head">
-          <span className="sp-pane-title">Selected</span>
-          <span className="sp-pane-count is-on">{selected.length}</span>
+      {open && (
+        <div className="sp-dual-menu">
+          <div className="sp-dual-col">
+            <div className="sp-dual-header">
+              <span className="sp-dual-title">Available Providers  ({availShown.length})</span>
+              <button type="button" className="sp-dual-action" onMouseDown={(e) => e.preventDefault()} onClick={selectAll}>SELECT ALL</button>
+            </div>
+            <ul className="sp-dual-list" role="listbox" aria-label="Available">
+              {availShown.length ? availShown.map((o) => (
+                <li key={o} role="option" aria-selected={false} className="sp-dual-item"
+                  onMouseDown={(e) => e.preventDefault()} onClick={() => move(o)}>
+                  <span className="sp-opt-label"><Mark text={o} query={query} /></span>
+                </li>
+              )) : <li className="sp-empty sp-empty-sm">{q ? "NO RESULTS" : "ALL SELECTED"}</li>}
+            </ul>
+          </div>
+          <div className="sp-dual-col">
+            <div className="sp-dual-header">
+              <span className="sp-dual-title">Selected Providers  ({selShown.length})</span>
+              <button type="button" className="sp-dual-action" onMouseDown={(e) => e.preventDefault()} onClick={deselectAll}>DESELECT ALL</button>
+            </div>
+            <ul className="sp-dual-list" role="listbox" aria-label="Selected">
+              {selShown.length ? selShown.map((o) => (
+                <li key={o} role="option" aria-selected className="sp-dual-item is-picked"
+                  onMouseDown={(e) => e.preventDefault()} onClick={() => back(o)}>
+                  <span className="sp-opt-label"><Mark text={o} query={query} /></span>
+                </li>
+              )) : <li className="sp-empty sp-empty-sm">{q ? "NO RESULTS" : "NONE SELECTED"}</li>}
+            </ul>
+          </div>
         </div>
-        <PanelSearch query={qs} setQuery={setQs} placeholder="Filter selected…" />
-        <ul className="sp-pane-list" role="listbox" aria-label="Selected">
-          {selShown.length ? selShown.map((o) => (
-            <li key={o} role="option" aria-selected className="sp-pane-item is-picked" tabIndex={0}
-              onClick={() => back(o)}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), back(o))}>
-              <Arrow className="sp-pane-arrow flip" />
-              <span className="sp-opt-label"><Mark text={o} query={qs} /></span>
-            </li>
-          )) : <li className="sp-empty sp-empty-sm">{selected.length ? "No results." : "Nothing selected yet."}</li>}
-        </ul>
-      </div>
+      )}
     </div>
   );
 }
@@ -421,7 +452,7 @@ function Specimen({ code, name, mode, select, trigger, children }) {
   const isMulti = select === "multi";
 
   return (
-    <article className={`sp-card ${select === "dual" ? "sp-card-wide" : ""}`}>
+    <article className="sp-card">
       <header className="sp-card-head">
         <div className="sp-card-id">
           <span className="sp-code">{code}</span>
@@ -639,29 +670,27 @@ const CSS = `
 .sp-status-dot{width:7px; height:7px; border-radius:50%; background:var(--field-line); flex:none; transition:.2s;}
 .sp-status-dot[data-on="true"]{background:var(--green-bar); box-shadow:0 0 0 3px var(--green-fill);}
 
-/* dual list */
-.sp-dual{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;}
-@media (max-width:560px){ .sp-dual{grid-template-columns:1fr;} }
-.sp-pane{border:1px solid var(--line); border-radius:4px; padding:10px; background:var(--paper);}
-.sp-pane-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; padding:0 2px;}
-.sp-pane-title{font-family:var(--f-disp); font-weight:600; font-size:13px;}
-.sp-pane-count{font-family:var(--f-mono); font-size:11px; color:var(--muted); background:var(--paper); border-radius:5px; padding:1px 7px;}
-.sp-pane-count.is-on{background:var(--green-fill); color:var(--green-bar);}
-.sp-field-sm{border-width:1px; margin-bottom:9px; align-items:center;}
-.sp-field-sm .sp-field-inner{padding:6px 4px 6px 12px;}
-.sp-field-sm .sp-input{font-size:13.5px;}
-.sp-pane-list{list-style:none; margin:0; padding:0; max-height:188px; overflow:auto; display:flex; flex-direction:column; gap:0;}
-.sp-pane-item{position:relative; display:flex; align-items:center; gap:8px; padding:8px 9px; border-radius:0; cursor:pointer; font-size:14px; color:var(--ink); background:#fff; border:none; border-bottom:1px solid var(--line);}
-.sp-pane-item:last-child{border-bottom:none;}
-.sp-pane-item:hover, .sp-pane-item:focus-visible{background:var(--green-fill); color:var(--ink); outline:none;}
-.sp-pane-item.is-picked{background:#fff; color:var(--ink);}
-.sp-pane-item.is-picked:hover{background:var(--green-fill);}
-.sp-pane-arrow{color:var(--green-bar); flex:none; opacity:0; transition:opacity .12s;}
-.sp-pane-item:hover .sp-pane-arrow, .sp-pane-item:focus-visible .sp-pane-arrow{opacity:1;}
-.sp-pane-arrow.flip{transform:rotate(180deg);}
-.sp-pane-item.is-picked .sp-pane-arrow{order:-1; margin-right:auto; opacity:0;}
-.sp-pane-item.is-picked:hover .sp-pane-arrow{opacity:.7;}
-.sp-pane-item:not(.is-picked) .sp-pane-arrow{margin-left:auto;}
+/* dual list dropdown */
+.sp-dual-badge{display:inline-flex; align-items:center; font-size:14px; font-weight:500; color:var(--ink);
+  background:var(--chip); padding:4px 10px; border-radius:var(--r-chip); cursor:pointer; white-space:nowrap;}
+.sp-dual-menu{position:absolute; z-index:20; left:0; right:0; bottom:calc(100% + 2px);
+  display:grid; grid-template-columns:1fr 1fr;
+  background:var(--surface); border:1px solid var(--chip-line); border-radius:var(--r-menu);
+  box-shadow:0 -10px 28px -10px rgba(16,24,40,.28); animation:sp-pop-up .14s ease; overflow:hidden;}
+@keyframes sp-pop-up{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+.sp-dual-col{display:flex; flex-direction:column; min-width:0;}
+.sp-dual-col + .sp-dual-col{border-left:1px solid var(--line);}
+.sp-dual-header{display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:10px 14px 8px; border-bottom:1px solid var(--line); background:var(--paper);}
+.sp-dual-title{font-family:var(--f-disp); font-weight:600; font-size:12px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.sp-dual-action{font-family:var(--f-mono); font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--brand); background:none; border:0; cursor:pointer; padding:2px 4px; border-radius:3px; white-space:nowrap; flex:none;}
+.sp-dual-action:hover{background:var(--brand-weak); color:var(--brand-hover);}
+.sp-dual-list{list-style:none; margin:0; padding:0; max-height:260px; overflow:auto; flex:1;}
+.sp-dual-item{display:flex; align-items:center; gap:8px; padding:9px 14px; cursor:pointer; font-size:14px; color:var(--ink);}
+.sp-dual-item:hover{background:var(--green-fill);}
+.sp-dual-item.is-picked{color:var(--ink);}
+.sp-dual-item.is-picked:hover{background:var(--green-fill);}
 
 /* footer */
 .sp-foot{max-width:760px; margin:24px auto 0; text-align:center;}
