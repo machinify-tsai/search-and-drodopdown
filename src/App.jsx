@@ -654,7 +654,7 @@ const CSS = `
 .sp-opt.is-active{background:var(--green-fill); color:var(--green-ink);}
 .sp-opt.is-picked{background:var(--green-fill); color:var(--green-ink);}
 .sp-opt.is-picked.is-active{background:#E0F7EA; color:var(--green-ink);}
-.sp-opt.is-picked::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--green-bar); border-radius:0 2px 2px 0;}
+.sp-opt.is-picked::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--green-bar);}
 .sp-opt-label{flex:1; min-width:0;}
 .sp-opt-create{color:var(--brand);}
 .sp-opt-create.is-active, .sp-opt-create.is-picked{color:var(--brand);}
