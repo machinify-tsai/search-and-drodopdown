@@ -396,7 +396,7 @@ function DualList({ options }) {
         <div className="sp-dual-menu">
           <div className="sp-dual-col">
             <div className="sp-dual-header">
-              <span className="sp-dual-title">Available Providers  ({availShown.length})</span>
+              <span className="sp-dual-title">Available  ({availShown.length})</span>
               <button type="button" className="sp-dual-action" onMouseDown={(e) => e.preventDefault()} onClick={selectAll}>SELECT ALL</button>
             </div>
             <ul className="sp-dual-list" role="listbox" aria-label="Available">
@@ -410,7 +410,7 @@ function DualList({ options }) {
           </div>
           <div className="sp-dual-col">
             <div className="sp-dual-header">
-              <span className="sp-dual-title">Selected Providers  ({selShown.length})</span>
+              <span className="sp-dual-title">Selected  ({selShown.length})</span>
               <button type="button" className="sp-dual-action" onMouseDown={(e) => e.preventDefault()} onClick={deselectAll}>DESELECT ALL</button>
             </div>
             <ul className="sp-dual-list" role="listbox" aria-label="Selected">
@@ -541,7 +541,7 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Condensed:wght@600&display=swap');
 
 .sp-root{
-  /* Machinify Teal — surfaces & text */
+  /* brand teal — surfaces & text */
   --paper:#F8F8F8; --surface:#FFFFFF; --ink:#404040; --muted:#8B8B8B;
   --ink-secondary:#6B6B6B;
   --line:#E0E0E0; --field-line:#BDBDBD;
