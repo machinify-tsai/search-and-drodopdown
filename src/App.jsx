@@ -68,20 +68,22 @@ function Mark({ text, query }) {
 }
 
 /* ----- a removable chip (reused for live + measurement) ----- */
-function Chip({ label, onRemove, trunc, ghost }) {
+function Chip({ label, onRemove, trunc, ghost, plain }) {
   return (
-    <span className={`sp-chip ${trunc ? "is-trunc" : ""}`}>
+    <span className={`sp-chip ${trunc ? "is-trunc" : ""} ${plain ? "is-plain" : ""}`}>
       <span className="sp-chip-label">{label}</span>
-      <button
-        type="button"
-        className="sp-chip-x"
-        aria-label={`Remove ${label}`}
-        tabIndex={ghost ? -1 : 0}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={ghost ? undefined : onRemove}
-      >
-        <Cross />
-      </button>
+      {!plain && (
+        <button
+          type="button"
+          className="sp-chip-x"
+          aria-label={`Remove ${label}`}
+          tabIndex={ghost ? -1 : 0}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={ghost ? undefined : onRemove}
+        >
+          <Cross />
+        </button>
+      )}
     </span>
   );
 }
@@ -97,6 +99,7 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [activeSource, setActiveSource] = useState(null);
   const [single, setSingle] = useState(null);
   const [multi, setMulti] = useState([]);
   const [searched, setSearched] = useState(null);
@@ -122,15 +125,16 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
   const showCreate = creatable && trimmed.length > 0 && !exact;
 
   const rows = useMemo(() => {
-    const r = filtered.map((o) => ({ type: "opt", value: o }));
+    const r = [];
     if (showCreate) r.push({ type: "create", value: trimmed });
+    r.push(...filtered.map((o) => ({ type: "opt", value: o })));
     return r;
   }, [filtered, showCreate, trimmed]);
 
   // Trigger rule: search opens after 2 typed chars; dropdown opens on focus; pure search (select=none) never opens.
   const isPureSearch = isSearch && select === "none";
   const menuOpen = !isPureSearch && open && (isSearch ? trimmed.length >= 2 : true);
-  const noResults = menuOpen && rows.length === 0;
+  const noResults = menuOpen && filtered.length === 0 && !showCreate;
 
   useEffect(() => { setActive(-1); }, [creatable]);
 
@@ -153,6 +157,7 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
     return () => ro.disconnect();
   }, [isMultiCollapse, multi, query, creatable]);
 
+  const allSelected = select === "multi" && multi.length === options.length;
   const removeChip = (v) => setMulti((m) => m.filter((x) => x !== v));
   const clearAll = () => { setMulti([]); inputRef.current?.focus(); };
   const clearSingle = () => { setSingle(null); setQuery(""); inputRef.current?.focus(); };
@@ -180,25 +185,26 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
       e.preventDefault();
       if (!menuOpen) { setOpen(true); return; }
       setActive((a) => Math.min(rows.length - 1, a + 1));
+      setActiveSource("key");
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (!menuOpen) return;
       setActive((a) => Math.max(0, a - 1));
+      setActiveSource("key");
     } else if (e.key === "Enter") {
       if (!menuOpen) return;
       e.preventDefault();
       if (active >= 0 && rows[active]) choose(rows[active]);
-      else if (rows.length > 0 && rows[0].type === "opt") choose(rows[0]);
-      else if (showCreate) choose({ type: "create", value: trimmed });
+      else if (showCreate && rows[0]?.type === "create") choose(rows[0]);
     } else if (e.key === "Escape") {
-      setOpen(false); setActive(-1);
+      setOpen(false); setActive(-1); setActiveSource(null);
     } else if (e.key === "Backspace" && select === "multi" && query === "" && multi.length) {
       setMulti((m) => m.slice(0, -1));
     }
   };
 
   const onBlur = (e) => {
-    if (!rootRef.current?.contains(e.relatedTarget)) { setOpen(false); setActive(-1); }
+    if (!rootRef.current?.contains(e.relatedTarget)) { setOpen(false); setActive(-1); setActiveSource(null); }
   };
 
   const TrailIcon = isSearch ? Search : Chevron;
@@ -241,16 +247,24 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
             </div>
           )}
 
+          {/* MULTI — "All" chip when every option is selected */}
+          {select === "multi" && allSelected && (
+            <span className="sp-all-wrap">
+              <Chip label="All" plain />
+              <span className="sp-pop">{multi.join(", ")}</span>
+            </span>
+          )}
+
           {/* MULTI — wrap mode: every chip flows, field grows vertically, text wraps */}
-          {select === "multi" && !isMultiCollapse &&
+          {select === "multi" && !allSelected && !isMultiCollapse &&
             multi.map((v) => <Chip key={v} label={v} onRemove={() => removeChip(v)} />)}
 
           {/* MULTI — collapse mode, fits on one line: show all chips */}
-          {select === "multi" && isMultiCollapse && !collapsed &&
+          {select === "multi" && !allSelected && isMultiCollapse && !collapsed &&
             multi.map((v) => <Chip key={v} label={v} onRemove={() => removeChip(v)} />)}
 
           {/* MULTI — collapse mode, overflowing: one truncated chip + +N badge */}
-          {showCollapsed && (
+          {!allSelected && showCollapsed && (
             <>
               <Chip label={multi[0]} trunc onRemove={() => removeChip(multi[0])} />
               {hidden.length > 0 && (
@@ -282,17 +296,19 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
       </div>
 
       {menuOpen && (
-        <ul className="sp-menu" id={`${uid}-list`} role="listbox" onMouseLeave={() => setActive(-1)}>
+        <ul className="sp-menu" id={`${uid}-list`} role="listbox" onMouseLeave={() => { setActive(-1); setActiveSource(null); }}>
           {rows.map((row, i) => {
+            const isActive = active === i;
+            const activeClass = isActive ? (activeSource === "key" ? "is-focused" : "is-hover") : "";
             const picked = select === "multi"
               ? multi.includes(row.value)
-              : (select === "single" ? single === row.value : searched === row.value);
+              : (select === "single" ? single === row.value && !showCreate : searched === row.value && !showCreate);
             if (row.type === "create") {
-              const createPicked = select === "single" ? single === row.value : (select === "none" ? searched === row.value : false);
+              const createPicked = select === "single" ? single === row.value : (select === "multi" ? multi.includes(row.value) : searched === row.value);
               return (
                 <li key="__create" id={`${uid}-opt-${i}`} role="option" aria-selected={createPicked}
-                  className={`sp-opt sp-opt-create ${active === i ? "is-active" : ""} ${createPicked ? "is-picked" : ""}`}
-                  onMouseEnter={() => setActive(i)} onMouseDown={(e) => e.preventDefault()}
+                  className={`sp-opt sp-opt-create ${activeClass} ${createPicked ? "is-picked" : ""}`}
+                  onMouseEnter={() => { setActive(i); setActiveSource("mouse"); }} onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(row)}>
                   <span className="sp-opt-label"><strong>{row.value}</strong></span>
                   <span className="sp-opt-hint">↵ enter</span>
@@ -301,8 +317,8 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
             }
             return (
               <li key={row.value} id={`${uid}-opt-${i}`} role="option" aria-selected={picked}
-                className={`sp-opt ${active === i ? "is-active" : ""} ${picked ? "is-picked" : ""}`}
-                onMouseEnter={() => setActive(i)} onMouseDown={(e) => e.preventDefault()}
+                className={`sp-opt ${activeClass} ${picked ? "is-picked" : ""}`}
+                onMouseEnter={() => { setActive(i); setActiveSource("mouse"); }} onMouseDown={(e) => e.preventDefault()}
                 onClick={() => choose(row)}>
                 <span className="sp-opt-label"><Mark text={row.value} query={query} /></span>
               </li>
@@ -327,16 +343,24 @@ function DualList({ options }) {
   const [query, setQuery] = useState("");
   const rootRef = useRef(null);
   const inputRef = useRef(null);
+  const innerRef = useRef(null);
+  const measRef = useRef(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   const available = options.filter((o) => !selected.includes(o));
   const q = query.trim().toLowerCase();
   const availShown = q ? available.filter((o) => o.toLowerCase().includes(q)) : available;
   const selShown = q ? selected.filter((o) => o.toLowerCase().includes(q)) : selected;
 
+  const allSelected = selected.length === options.length;
+
   const move = (o) => setSelected((s) => [...s, o]);
   const back = (o) => setSelected((s) => s.filter((x) => x !== o));
   const selectAll = () => setSelected((s) => [...s, ...availShown.filter((o) => !s.includes(o))]);
   const deselectAll = () => setSelected((s) => s.filter((x) => !selShown.includes(x)));
+
+  const removeChip = (v) => setSelected((s) => s.filter((x) => x !== v));
+  const clearAll = () => { setSelected([]); inputRef.current?.focus(); };
 
   const onBlur = (e) => {
     if (!rootRef.current?.contains(e.relatedTarget)) { setOpen(false); }
@@ -346,26 +370,60 @@ function DualList({ options }) {
     if (e.key === "Escape") { setOpen(false); }
   };
 
-  const displayText = selected.length > 0 ? `${selected.length} selected` : "";
+  useLayoutEffect(() => {
+    if (selected.length === 0) { setCollapsed(false); return; }
+    const compute = () => {
+      const inner = innerRef.current, meas = measRef.current;
+      if (!inner || !meas) return;
+      const cs = getComputedStyle(inner);
+      const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      const avail = inner.clientWidth - pad;
+      const needed = Math.ceil(meas.getBoundingClientRect().width);
+      setCollapsed(needed > avail + 1);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    if (innerRef.current) ro.observe(innerRef.current);
+    return () => ro.disconnect();
+  }, [selected, query]);
+
+  const hidden = selected.slice(1);
 
   return (
-    <div className="sp-field-wrap" ref={rootRef} onBlur={onBlur}>
+    <div className="sp-field-wrap sp-dual-wrap" ref={rootRef} onBlur={onBlur}>
       <div className={`sp-field ${open ? "is-open" : ""}`} role="combobox"
            aria-expanded={open} aria-haspopup="listbox">
-        <div className="sp-field-inner"
+        <div className="sp-field-inner sp-collapse" ref={innerRef}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) { e.preventDefault(); inputRef.current?.focus(); setOpen(true); }
           }}>
           {selected.length > 0 && (
-            <span className="sp-dual-badge" onMouseDown={(e) => { e.preventDefault(); inputRef.current?.focus(); setOpen(true); }}>
-              {displayText}
-              <span className="sp-pop">
-                {selected.length <= 10
-                  ? selected.join(", ")
-                  : selected.slice(0, 10).join(", ") + `, and ${selected.length - 10} more`}
-              </span>
-            </span>
+            <div ref={measRef} className="sp-measurer" aria-hidden>
+              {selected.map((v) => <Chip key={v} label={v} ghost />)}
+              <span className="sp-meas-input" />
+            </div>
           )}
+
+          {allSelected ? (
+            <span className="sp-all-wrap">
+              <Chip label="All" plain />
+              <span className="sp-pop">{selected.join(", ")}</span>
+            </span>
+          ) : !collapsed ? (
+            selected.map((v) => <Chip key={v} label={v} onRemove={() => removeChip(v)} />)
+          ) : selected.length > 0 ? (
+            <>
+              <Chip label={selected[0]} trunc onRemove={() => removeChip(selected[0])} />
+              {hidden.length > 0 && (
+                <span className="sp-more" tabIndex={0} aria-label={`${hidden.length} more selected`}>
+                  +{hidden.length}
+                  <span className="sp-pop">
+                    {hidden.join(", ")}
+                  </span>
+                </span>
+              )}
+            </>
+          ) : null}
           <input
             ref={inputRef}
             className="sp-input"
@@ -494,17 +552,21 @@ export default function InteractionSpecimens() {
         <ul className="sp-rules">
           <li><b>Trigger</b> — <em>Search</em> opens after 2 typed characters; <em>Dropdown</em> opens on focus</li>
           <li><b>Highlight</b> — matched substring is <mark className="sp-mark">highlighted</mark> as you type</li>
-          <li><b>Unknown value</b> — toggle between rejecting or accepting new values with <kbd>↵</kbd></li>
-          <li><b>Multi-select chips</b> — switch between <em>wrap</em> (grow vertically) and <em>collapse</em> (+N badge)</li>
+          <li><b>Selection</b> — no auto-select on top match; use <kbd>↑</kbd> <kbd>↓</kbd> to navigate, <kbd>↵</kbd> to confirm</li>
+          <li><b>Unknown value</b> — when accepting new values, the typed value appears first in the menu; press <kbd>↵</kbd> to add</li>
+          <li><b>Multi-select chips</b> — switch between <em>wrap</em> (grow vertically) and <em>collapse</em> (+N badge); selecting all collapses into an "All" chip</li>
           <li><b>Single select</b> — re-focus selects all text for quick replacement</li>
-          <li><b>Dual list</b> — two-column dropdown with SELECT ALL / DESELECT ALL; search filters both columns</li>
+          <li><b>Dual list</b> — two-column transfer menu with SELECT ALL / DESELECT ALL; follows the same chip rules; search filters both columns. Deselect happens inside the panel, not via an ✕ button on the field</li>
+          <li><b>Clear all</b> — context-level decision: the ✕ button on +N and "All" badges is optional. Use it when bulk clearing is safe; omit it when selections are complex or costly to rebuild</li>
+          <li><b>Tooltip</b> — opens on the opposite side of the menu to avoid overlap; max-width with text wrapping</li>
+          <li><b>Focus vs hover</b> — keyboard navigation shows a focus ring; mouse hover shows a green background</li>
         </ul>
         <div className="sp-keys">
-          <span><kbd>↑</kbd> <kbd>↓</kbd> move</span>
+          <span><kbd>↑</kbd> <kbd>↓</kbd> navigate</span>
           <span><kbd>↵</kbd> select / create</span>
           <span><kbd>esc</kbd> close</span>
           <span><kbd>⌫</kbd> removes last chip</span>
-          <span>hover <b>+N</b> to reveal the rest</span>
+          <span>hover <b>+N</b> or <b>All</b> to reveal tooltip</span>
         </div>
       </header>
 
@@ -602,6 +664,7 @@ const CSS = `
 .sp-field-wrap{position:relative; margin-top:12px;}
 .sp-field{display:flex; align-items:flex-start; background:var(--surface); border:1px solid var(--field-line);
   border-radius:var(--r-field); transition:border-color .14s, box-shadow .14s;}
+.sp-field:hover{border-color:var(--ink);}
 .sp-field:focus-within{border-color:var(--brand-focus);}
 .sp-field-inner{position:relative; flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:4px 4px 4px 14px; min-height:40px; box-sizing:border-box;}
 .sp-field-inner.sp-collapse{flex-wrap:nowrap;}
@@ -622,26 +685,31 @@ const CSS = `
 /* chips — neutral gray "Value x" */
 .sp-chip{display:inline-flex; align-items:center; gap:4px; max-width:100%; font-size:14px; font-weight:400;
   background:var(--chip); color:var(--chip-ink); border:1px solid transparent; padding:0 4px 0 8px; border-radius:var(--r-chip); height:20px; line-height:1;}
+.sp-chip.is-plain{padding:0 8px;}
 .sp-chip-label{min-width:0; overflow-wrap:anywhere; word-break:break-word;}
 .sp-chip.is-trunc{flex:0 1 auto; min-width:6ch;}
 .sp-chip.is-trunc .sp-chip-label{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:13ch;}
 .sp-chip-x{display:grid; place-items:center; width:16px; height:16px; flex:none; cursor:pointer; border:0; border-radius:50%; background:transparent; color:var(--ink); transition:background .14s, color .14s;}
 .sp-chip-x:hover{background:var(--brand-secondary-hover); color:var(--ink);}
 .sp-chip-x:active{background:#C1D9DC; color:var(--ink);}
-.sp-chip-x:focus-visible{outline:2px solid var(--brand-focus); outline-offset:0;}
+.sp-chip-x:focus-visible{outline:2px solid var(--brand); outline-offset:0;}
 
 /* +N badge + reveal popover */
 .sp-more{position:relative; display:inline-flex; align-items:center; justify-content:center; flex:none; cursor:default;
   font-family:var(--f-mono); font-size:12px; font-weight:400; color:var(--chip-ink); background:var(--chip);
   border:1px solid var(--chip-line); border-radius:var(--r-chip); padding:0 8px; height:20px; outline:none;}
-.sp-pop{position:absolute; z-index:30; top:calc(100% + 8px); left:0; display:none;
-  padding:8px 12px; background:var(--surface); color:var(--ink);
+.sp-pop{position:absolute; z-index:30; bottom:calc(100% + 8px); left:0; display:none;
+  width:max-content; max-width:320px; padding:8px 12px; background:var(--surface); color:var(--ink);
   border-radius:6px; font-size:14px; line-height:1.4;
   box-shadow:0 3px 14px 2px rgba(0,0,0,0.12), 0 8px 10px 1px rgba(0,0,0,0.14), 0 5px 5px -3px rgba(0,0,0,0.20);}
-.sp-pop::before{content:""; position:absolute; top:-6px; left:12px; width:12px; height:12px;
+.sp-pop::before{content:""; position:absolute; bottom:-6px; left:12px; width:12px; height:12px;
   background:var(--surface); transform:rotate(45deg);
-  box-shadow:-2px -2px 4px rgba(0,0,0,0.06);}
-.sp-more:hover .sp-pop, .sp-more:focus-within .sp-pop, .sp-dual-badge:hover .sp-pop{display:block;}
+  box-shadow:2px 2px 4px rgba(0,0,0,0.06);}
+.sp-all-wrap{position:relative; display:inline-flex; align-items:center;}
+.sp-all-wrap:hover .sp-pop{display:block;}
+.sp-more:hover .sp-pop, .sp-more:focus-within .sp-pop{display:block;}
+.sp-dual-wrap .sp-pop{bottom:auto; top:calc(100% + 8px);}
+.sp-dual-wrap .sp-pop::before{bottom:auto; top:-6px; box-shadow:-2px -2px 4px rgba(0,0,0,0.06);}
 
 /* hidden measurer */
 .sp-measurer{position:absolute; left:0; top:0; visibility:hidden; pointer-events:none; display:inline-flex; flex-wrap:nowrap; gap:6px; white-space:nowrap;}
@@ -652,15 +720,17 @@ const CSS = `
   background:var(--surface); border:none; border-radius:var(--r-menu); max-height:240px; overflow:auto;
   box-shadow:0 3px 14px 2px rgba(0,0,0,0.12), 0 8px 10px 1px rgba(0,0,0,0.14), 0 5px 5px -3px rgba(0,0,0,0.20); animation:sp-pop .14s ease;}
 @keyframes sp-pop{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
-.sp-opt{position:relative; display:flex; align-items:center; gap:10px; padding:0 14px; cursor:pointer; font-size:14px; color:var(--ink-secondary); scroll-margin:6px; min-height:40px;}
-.sp-opt.is-active{background:var(--green-fill); color:var(--green-ink);}
+.sp-opt{position:relative; display:flex; align-items:center; gap:10px; padding:0 14px; cursor:pointer; font-size:14px; color:var(--ink); scroll-margin:6px; min-height:40px;}
+.sp-opt.is-hover{background:var(--green-fill); color:var(--green-ink);}
+.sp-opt.is-focused{background:var(--surface); color:var(--ink); outline:2px solid var(--brand); outline-offset:-2px;}
 .sp-opt.is-picked{background:var(--green-fill); color:var(--green-ink);}
-.sp-opt.is-picked.is-active{background:#E0F7EA; color:var(--green-ink);}
+.sp-opt.is-picked.is-hover{background:#E0F7EA; color:var(--green-ink);}
+.sp-opt.is-picked.is-focused{background:var(--green-fill); outline:2px solid var(--brand); outline-offset:-2px;}
 .sp-opt.is-picked::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--green-bar);}
 .sp-opt-label{flex:1; min-width:0;}
 .sp-opt-create{color:var(--brand);}
-.sp-opt-create.is-active, .sp-opt-create.is-picked{color:var(--brand);}
-.sp-opt-create.is-active::before{background:var(--brand);}
+.sp-opt-create.is-hover, .sp-opt-create.is-focused, .sp-opt-create.is-picked{color:var(--brand);}
+.sp-opt-create.is-hover::before, .sp-opt-create.is-focused::before{background:var(--brand);}
 .sp-opt-mark{display:grid; place-items:center; width:16px; height:16px; color:var(--brand); flex:none;}
 .sp-opt-create strong{color:var(--ink); font-weight:600;}
 .sp-opt-hint{font-family:var(--f-mono); font-size:10px; color:var(--muted); letter-spacing:.04em;}
@@ -704,6 +774,6 @@ const CSS = `
 .sp-dataset-item{font-size:14px; color:var(--ink); background:var(--chip); padding:4px 10px; border-radius:4px;}
 
 /* a11y / motion */
-.sp-root :focus-visible{outline:2px solid var(--brand-focus); outline-offset:2px;}
+.sp-root :focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){ .sp-root *{animation:none !important; transition:none !important;} }
 `;
