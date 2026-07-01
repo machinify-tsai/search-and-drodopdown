@@ -256,16 +256,8 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
               {hidden.length > 0 && (
                 <span className="sp-more" tabIndex={0} aria-label={`${hidden.length} more selected`}>
                   +{hidden.length}
-                  <span className="sp-pop" role="list">
-                    {hidden.map((v) => (
-                      <span className="sp-pop-chip" role="listitem" key={v}>
-                        <span className="sp-chip-label">{v}</span>
-                        <button type="button" className="sp-chip-x" aria-label={`Remove ${v}`}
-                          onMouseDown={(e) => e.preventDefault()} onClick={() => removeChip(v)}>
-                          <Cross />
-                        </button>
-                      </span>
-                    ))}
+                  <span className="sp-pop">
+                    {hidden.join(", ")}
                   </span>
                 </span>
               )}
@@ -393,8 +385,8 @@ function DualList({ options }) {
         <div className="sp-dual-menu">
           <div className="sp-dual-col">
             <div className="sp-dual-header">
-              <span className="sp-dual-title">Available  ({availShown.length})</span>
-              <button type="button" className="sp-dual-action" onMouseDown={(e) => e.preventDefault()} onClick={selectAll}>SELECT ALL</button>
+              <span className="sp-dual-title">Available  ({q ? `${availShown.length} of ${available.length}` : availShown.length})</span>
+              <button type="button" className="sp-dual-action" disabled={availShown.length === 0} onMouseDown={(e) => e.preventDefault()} onClick={selectAll}>SELECT ALL</button>
             </div>
             <ul className="sp-dual-list" role="listbox" aria-label="Available">
               {availShown.length ? availShown.map((o) => (
@@ -407,8 +399,8 @@ function DualList({ options }) {
           </div>
           <div className="sp-dual-col">
             <div className="sp-dual-header">
-              <span className="sp-dual-title">Selected  ({selShown.length})</span>
-              <button type="button" className="sp-dual-action" onMouseDown={(e) => e.preventDefault()} onClick={deselectAll}>DESELECT ALL</button>
+              <span className="sp-dual-title">Selected  ({q ? `${selShown.length} of ${selected.length}` : selShown.length})</span>
+              <button type="button" className="sp-dual-action" disabled={selShown.length === 0} onMouseDown={(e) => e.preventDefault()} onClick={deselectAll}>DESELECT ALL</button>
             </div>
             <ul className="sp-dual-list" role="listbox" aria-label="Selected">
               {selShown.length ? selShown.map((o) => (
@@ -494,17 +486,21 @@ export default function InteractionSpecimens() {
       <header className="sp-masthead">
         <p className="sp-eyebrow">Interaction specimens · 06 variants</p>
         <h1 className="sp-title">Search &amp; dropdown<span className="sp-title-mark">,</span> field-tested</h1>
-        <p className="sp-lede">
-          A working catalog of typed-selection micro-interactions. Every field is editable with at
-          least eight characters of room, every match is <mark className="sp-mark">highlighted</mark> as
-          you type, and each card flips between treating an unknown entry as <em>no result</em> or as
-          a <em>new value</em> you can commit with <kbd>↵</kbd>. Multi-select cards switch between
-          chips that <em>wrap</em> and chips that <em>collapse</em> behind a +N badge.
-        </p>
-        <ul className="sp-legend">
-          <li><span className="sp-leg-ic"><Search /></span> <b>Search</b> — opens after 2 typed characters</li>
-          <li><span className="sp-leg-ic"><Chevron /></span> <b>Dropdown</b> — opens on focus, chevron flips</li>
+        <ul className="sp-rules">
+          <li><b>Trigger</b> — <em>Search</em> opens after 2 typed characters; <em>Dropdown</em> opens on focus</li>
+          <li><b>Highlight</b> — matched substring is <mark className="sp-mark">highlighted</mark> as you type</li>
+          <li><b>Unknown value</b> — toggle between rejecting or accepting new values with <kbd>↵</kbd></li>
+          <li><b>Multi-select chips</b> — switch between <em>wrap</em> (grow vertically) and <em>collapse</em> (+N badge)</li>
+          <li><b>Single select</b> — re-focus selects all text for quick replacement</li>
+          <li><b>Dual list</b> — two-column dropdown with SELECT ALL / DESELECT ALL; search filters both columns</li>
         </ul>
+        <div className="sp-keys">
+          <span><kbd>↑</kbd> <kbd>↓</kbd> move</span>
+          <span><kbd>↵</kbd> select / create</span>
+          <span><kbd>esc</kbd> close</span>
+          <span><kbd>⌫</kbd> removes last chip</span>
+          <span>hover <b>+N</b> to reveal the rest</span>
+        </div>
       </header>
 
       <section className="sp-grid">
@@ -525,7 +521,6 @@ export default function InteractionSpecimens() {
             {SPECIES.map((s) => <span key={s} className="sp-dataset-item">{s}</span>)}
           </div>
         </div>
-        <span>↑ ↓ move · ↵ select / create · esc close · ⌫ removes last chip · hover +N to reveal the rest</span>
       </footer>
     </div>
   );
@@ -539,7 +534,7 @@ const CSS = `
 
 .sp-root{
   /* brand teal — surfaces & text */
-  --paper:#F8F8F8; --surface:#FFFFFF; --ink:#404040; --muted:#8B8B8B;
+  --paper:#FFFFFF; --surface:#FFFFFF; --ink:#404040; --muted:#8B8B8B;
   --ink-secondary:#6B6B6B;
   --line:#E0E0E0; --field-line:#BDBDBD;
   /* brand teal — focus / accents */
@@ -568,13 +563,14 @@ const CSS = `
 .sp-eyebrow{font-family:var(--f-mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--brand); margin:0 0 14px;}
 .sp-title{font-family:var(--f-disp); font-weight:600; letter-spacing:-.02em; font-size:clamp(32px,5.4vw,54px); line-height:1.02; margin:0 0 18px;}
 .sp-title-mark{color:var(--brand);}
-.sp-lede{font-size:14px; line-height:1.6; color:var(--ink-secondary); margin:0 0 20px; max-width:64ch;}
-.sp-lede em{font-style:normal; font-weight:600; color:var(--ink);}
-.sp-lede kbd{font-family:var(--f-mono); font-size:.82em; background:var(--surface); border:1px solid var(--field-line); border-bottom-width:2px; border-radius:5px; padding:1px 5px;}
-.sp-legend{list-style:none; display:flex; flex-wrap:wrap; gap:10px 22px; padding:0; margin:0; font-size:12px; font-weight:300; letter-spacing:.02em; color:var(--ink-secondary);}
-.sp-legend li{display:flex; align-items:center; gap:8px;}
-.sp-legend b{font-weight:500; color:var(--ink);}
-.sp-leg-ic{display:grid; place-items:center; width:24px; height:24px; border-radius:4px; background:var(--surface); border:1px solid var(--field-line); color:var(--ink-secondary);}
+.sp-rules{list-style:none; padding:0; margin:0 0 16px; display:flex; flex-direction:column; gap:6px; font-size:13px; line-height:1.5; color:var(--ink-secondary);}
+.sp-rules b{font-weight:600; color:var(--ink);}
+.sp-rules em{font-style:normal; font-weight:500; color:var(--ink);}
+.sp-rules kbd{font-family:var(--f-mono); font-size:.82em; background:var(--surface); border:1px solid var(--field-line); border-bottom-width:2px; border-radius:5px; padding:1px 5px;}
+.sp-rules mark.sp-mark{font-weight:700;}
+.sp-keys{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; color:var(--muted); letter-spacing:.02em;}
+.sp-keys kbd{font-family:var(--f-mono); font-size:.9em; background:var(--surface); border:1px solid var(--field-line); border-bottom-width:2px; border-radius:4px; padding:1px 5px; color:var(--ink-secondary);}
+.sp-keys b{font-weight:600; color:var(--ink-secondary);}
 
 /* grid + card */
 .sp-grid{max-width:760px; margin:0 auto; display:flex; flex-direction:column;}
@@ -603,7 +599,7 @@ const CSS = `
   border-radius:var(--r-field); transition:border-color .14s, box-shadow .14s;}
 .sp-field:focus-within{border-color:var(--brand-focus);}
 .sp-field-inner{position:relative; flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:4px 4px 4px 14px; min-height:40px; box-sizing:border-box;}
-.sp-field-inner.sp-collapse{flex-wrap:nowrap; overflow:hidden;}
+.sp-field-inner.sp-collapse{flex-wrap:nowrap;}
 .sp-input{flex:1 1 8ch; min-width:8ch; border:0; outline:0; background:transparent; font-family:var(--f-ui); font-size:14px; color:var(--ink); padding:0; height:30px;}
 .sp-input::placeholder{color:var(--muted); font-style:italic;}
 .sp-root .sp-input:focus, .sp-root .sp-input:focus-visible{outline:none; box-shadow:none;}
@@ -631,14 +627,16 @@ const CSS = `
 
 /* +N badge + reveal popover */
 .sp-more{position:relative; display:inline-flex; align-items:center; justify-content:center; flex:none; cursor:default;
-  font-family:var(--f-mono); font-size:12px; font-weight:700; color:var(--chip-ink); background:var(--chip);
+  font-family:var(--f-mono); font-size:12px; font-weight:400; color:var(--chip-ink); background:var(--chip);
   border:1px solid var(--chip-line); border-radius:var(--r-chip); padding:0 8px; height:20px; outline:none;}
-.sp-pop{position:absolute; z-index:30; top:calc(100% + 8px); left:0; display:none; flex-wrap:wrap; gap:6px;
-  width:max-content; max-width:260px; padding:8px; background:var(--surface); border:1px solid var(--chip-line);
-  border-radius:8px; box-shadow:0 10px 28px -10px rgba(16,24,40,.30);}
-.sp-more:hover .sp-pop, .sp-more:focus-within .sp-pop{display:flex;}
-.sp-pop-chip{display:inline-flex; align-items:center; gap:4px; font-size:14px; font-weight:400; color:var(--chip-ink);
-  background:var(--chip); border:1px solid transparent; padding:0 4px 0 8px; border-radius:var(--r-chip); height:20px; line-height:1;}
+.sp-pop{position:absolute; z-index:30; top:calc(100% + 8px); left:0; display:none;
+  width:max-content; max-width:260px; padding:8px 12px; background:var(--surface); color:var(--ink);
+  border-radius:6px; font-size:14px; line-height:1.4;
+  box-shadow:0 3px 14px 2px rgba(0,0,0,0.12), 0 8px 10px 1px rgba(0,0,0,0.14), 0 5px 5px -3px rgba(0,0,0,0.20);}
+.sp-pop::before{content:""; position:absolute; top:-6px; left:12px; width:12px; height:12px;
+  background:var(--surface); transform:rotate(45deg);
+  box-shadow:-2px -2px 4px rgba(0,0,0,0.06);}
+.sp-more:hover .sp-pop, .sp-more:focus-within .sp-pop{display:block;}
 
 /* hidden measurer */
 .sp-measurer{position:absolute; left:0; top:0; visibility:hidden; pointer-events:none; display:inline-flex; flex-wrap:nowrap; gap:6px; white-space:nowrap;}
@@ -661,8 +659,8 @@ const CSS = `
 .sp-opt-mark{display:grid; place-items:center; width:16px; height:16px; color:var(--brand); flex:none;}
 .sp-opt-create strong{color:var(--ink); font-weight:600;}
 .sp-opt-hint{font-family:var(--f-mono); font-size:10px; color:var(--muted); letter-spacing:.04em;}
-.sp-empty{padding:14px; font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted);}
-.sp-empty-sm{padding:12px; text-transform:none; letter-spacing:0; font-size:14px; text-align:center;}
+.sp-empty{padding:14px; font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted);}
+.sp-empty-sm{padding:12px; text-transform:none; letter-spacing:0; font-size:10px; text-align:center;}
 
 /* status */
 .sp-status{display:flex; align-items:center; gap:7px; margin:9px 2px 0; font-family:var(--f-mono); font-size:11px; color:var(--muted); letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -678,14 +676,15 @@ const CSS = `
   box-shadow:0 3px 14px 2px rgba(0,0,0,0.12), 0 8px 10px 1px rgba(0,0,0,0.14), 0 5px 5px -3px rgba(0,0,0,0.20); animation:sp-pop-up .14s ease; overflow:hidden;}
 @keyframes sp-pop-up{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
 .sp-dual-col{display:flex; flex-direction:column; min-width:0;}
-.sp-dual-col + .sp-dual-col{border-left:1px solid #6B6B6B;}
+.sp-dual-col + .sp-dual-col{border-left:1px solid #BDBDBD;}
 .sp-dual-header{display:flex; align-items:center; justify-content:space-between; gap:8px;
-  padding:0 14px; height:40px; border-bottom:1px solid #6B6B6B; background:var(--paper);}
+  padding:0 14px; height:40px; background:#F0F0F0;}
 .sp-dual-title{font-family:var(--f-disp); font-weight:600; font-size:14px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.sp-dual-action{font-family:var(--f-mono); font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
-  color:var(--brand); background:none; border:0; cursor:pointer; padding:2px 4px; border-radius:3px; white-space:nowrap; flex:none;}
-.sp-dual-action:hover{background:var(--brand-weak); color:var(--brand-hover);}
-.sp-dual-list{list-style:none; margin:0; padding:0; max-height:260px; overflow:auto; flex:1;}
+.sp-dual-action{font-family:var(--f-mono); font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--brand); background:none; border:0; cursor:pointer; padding:0 16px; height:32px; border-radius:20px; white-space:nowrap; flex:none; text-decoration:underline;}
+.sp-dual-action:hover:not(:disabled){background:#E1ECED; color:var(--brand-hover);}
+.sp-dual-action:disabled{color:var(--muted); cursor:default;}
+.sp-dual-list{list-style:none; margin:0; padding:0; max-height:400px; overflow:auto; flex:1;}
 .sp-dual-item{display:flex; align-items:center; gap:8px; padding:0 14px; cursor:pointer; font-size:14px; color:var(--ink); min-height:40px;}
 .sp-dual-item:hover{background:var(--green-fill);}
 .sp-dual-item.is-picked{color:var(--ink);}
