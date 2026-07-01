@@ -311,7 +311,7 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
                   onMouseEnter={() => { setActive(i); setActiveSource("mouse"); }} onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(row)}>
                   <span className="sp-opt-label"><strong>{row.value}</strong></span>
-                  <span className="sp-opt-hint">↵ enter</span>
+                  <span className="sp-opt-hint">↵ ENTER</span>
                 </li>
               );
             }
@@ -733,7 +733,9 @@ const CSS = `
 .sp-opt-create.is-hover::before, .sp-opt-create.is-focused::before{background:var(--brand);}
 .sp-opt-mark{display:grid; place-items:center; width:16px; height:16px; color:var(--brand); flex:none;}
 .sp-opt-create strong{color:var(--ink); font-weight:600;}
-.sp-opt-hint{font-family:var(--f-mono); font-size:10px; color:var(--muted); letter-spacing:.04em;}
+.sp-opt-hint{display:inline-flex; align-items:center; font-family:var(--f-mono); font-size:10px; font-weight:400;
+  color:#000; letter-spacing:.1em; text-transform:uppercase;
+  background:#E0E0E0; padding:5px 4px; border-radius:4px; white-space:nowrap; line-height:1; height:16px; box-sizing:border-box;}
 .sp-empty{padding:14px; font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted);}
 .sp-empty-sm{padding:12px; text-transform:none; letter-spacing:0; font-size:10px; text-align:center;}
 
