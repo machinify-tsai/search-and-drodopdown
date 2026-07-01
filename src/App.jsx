@@ -359,6 +359,11 @@ function DualList({ options }) {
           {selected.length > 0 && (
             <span className="sp-dual-badge" onMouseDown={(e) => { e.preventDefault(); inputRef.current?.focus(); setOpen(true); }}>
               {displayText}
+              <span className="sp-pop">
+                {selected.length <= 10
+                  ? selected.join(", ")
+                  : selected.slice(0, 10).join(", ") + `, and ${selected.length - 10} more`}
+              </span>
             </span>
           )}
           <input
@@ -484,7 +489,7 @@ export default function InteractionSpecimens() {
       <style>{CSS}</style>
 
       <header className="sp-masthead">
-        <p className="sp-eyebrow">Interaction specimens · 06 variants</p>
+        <p className="sp-eyebrow">Interaction Specimens · Last Updated Jul 1, 2026</p>
         <h1 className="sp-title">Search &amp; dropdown<span className="sp-title-mark">,</span> field-tested</h1>
         <ul className="sp-rules">
           <li><b>Trigger</b> — <em>Search</em> opens after 2 typed characters; <em>Dropdown</em> opens on focus</li>
@@ -630,13 +635,13 @@ const CSS = `
   font-family:var(--f-mono); font-size:12px; font-weight:400; color:var(--chip-ink); background:var(--chip);
   border:1px solid var(--chip-line); border-radius:var(--r-chip); padding:0 8px; height:20px; outline:none;}
 .sp-pop{position:absolute; z-index:30; top:calc(100% + 8px); left:0; display:none;
-  width:max-content; max-width:260px; padding:8px 12px; background:var(--surface); color:var(--ink);
+  padding:8px 12px; background:var(--surface); color:var(--ink);
   border-radius:6px; font-size:14px; line-height:1.4;
   box-shadow:0 3px 14px 2px rgba(0,0,0,0.12), 0 8px 10px 1px rgba(0,0,0,0.14), 0 5px 5px -3px rgba(0,0,0,0.20);}
 .sp-pop::before{content:""; position:absolute; top:-6px; left:12px; width:12px; height:12px;
   background:var(--surface); transform:rotate(45deg);
   box-shadow:-2px -2px 4px rgba(0,0,0,0.06);}
-.sp-more:hover .sp-pop, .sp-more:focus-within .sp-pop{display:block;}
+.sp-more:hover .sp-pop, .sp-more:focus-within .sp-pop, .sp-dual-badge:hover .sp-pop{display:block;}
 
 /* hidden measurer */
 .sp-measurer{position:absolute; left:0; top:0; visibility:hidden; pointer-events:none; display:inline-flex; flex-wrap:nowrap; gap:6px; white-space:nowrap;}
@@ -668,7 +673,7 @@ const CSS = `
 .sp-status-dot[data-on="true"]{background:var(--green-bar); box-shadow:0 0 0 3px var(--green-fill);}
 
 /* dual list dropdown */
-.sp-dual-badge{display:inline-flex; align-items:center; font-size:14px; font-weight:400; color:var(--ink);
+.sp-dual-badge{position:relative; display:inline-flex; align-items:center; font-size:14px; font-weight:400; color:var(--ink);
   background:var(--chip); padding:4px 10px; border-radius:var(--r-chip); cursor:pointer; white-space:nowrap;}
 .sp-dual-menu{position:absolute; z-index:20; left:0; right:0; bottom:calc(100% + 2px);
   display:grid; grid-template-columns:1fr 1fr;
