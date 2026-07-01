@@ -223,7 +223,7 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
       aria-autocomplete="list"
       aria-activedescendant={active >= 0 ? `${uid}-opt-${active}` : undefined}
       onChange={(e) => { setQuery(e.target.value); setOpen(true); setActive(-1); }}
-      onFocus={(e) => { setOpen(true); if (select === "single" && single) e.target.select(); }}
+      onFocus={(e) => { setOpen(true); const el = e.target; if (el.value) requestAnimationFrame(() => el.select()); }}
       onKeyDown={onKeyDown}
     />
   );
