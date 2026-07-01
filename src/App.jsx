@@ -283,26 +283,23 @@ function Combo({ mode, select, creatable, chipMode = "wrap", options }) {
               <Cross />
             </button>
           )}
-          {/* single-select: no inline clear X per design */}
-          <button type="button" className={`sp-icon-btn ${menuOpen && !isSearch ? "is-up" : ""}`}
-            tabIndex={-1} aria-label={isSearch ? "Search" : "Toggle menu"}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { setOpen((o) => !o); inputRef.current?.focus(); }}>
+          <span className={`sp-trail-icon ${menuOpen && !isSearch ? "is-up" : ""}`} aria-hidden="true">
             <TrailIcon />
-          </button>
+          </span>
         </div>
       </div>
 
       {menuOpen && (
-        <ul className="sp-menu" id={`${uid}-list`} role="listbox">
+        <ul className="sp-menu" id={`${uid}-list`} role="listbox" onMouseLeave={() => setActive(-1)}>
           {rows.map((row, i) => {
             const picked = select === "multi"
               ? multi.includes(row.value)
               : (select === "single" ? single === row.value : searched === row.value);
             if (row.type === "create") {
+              const createPicked = select === "single" ? single === row.value : (select === "none" ? searched === row.value : false);
               return (
-                <li key="__create" id={`${uid}-opt-${i}`} role="option" aria-selected={false}
-                  className={`sp-opt sp-opt-create ${active === i ? "is-active" : ""}`}
+                <li key="__create" id={`${uid}-opt-${i}`} role="option" aria-selected={createPicked}
+                  className={`sp-opt sp-opt-create ${active === i ? "is-active" : ""} ${createPicked ? "is-picked" : ""}`}
                   onMouseEnter={() => setActive(i)} onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(row)}>
                   <span className="sp-opt-label"><strong>{row.value}</strong></span>
@@ -605,23 +602,25 @@ const CSS = `
 .sp-field{display:flex; align-items:flex-start; background:var(--surface); border:1px solid var(--field-line);
   border-radius:var(--r-field); transition:border-color .14s, box-shadow .14s;}
 .sp-field:focus-within{border-color:var(--brand-focus);}
-.sp-field-inner{position:relative; flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 4px 8px 14px;}
+.sp-field-inner{position:relative; flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:4px 4px 4px 14px; min-height:40px; box-sizing:border-box;}
 .sp-field-inner.sp-collapse{flex-wrap:nowrap; overflow:hidden;}
-.sp-input{flex:1 1 8ch; min-width:8ch; border:0; outline:0; background:transparent; font-family:var(--f-ui); font-size:14px; color:var(--ink); padding:5px 0; min-height:26px;}
+.sp-input{flex:1 1 8ch; min-width:8ch; border:0; outline:0; background:transparent; font-family:var(--f-ui); font-size:14px; color:var(--ink); padding:0; height:30px;}
 .sp-input::placeholder{color:var(--muted); font-style:italic;}
 .sp-root .sp-input:focus, .sp-root .sp-input:focus-visible{outline:none; box-shadow:none;}
-.sp-trail{display:flex; align-items:center; gap:2px; padding:9px 10px 0 4px;}
+.sp-trail{display:flex; align-items:center; gap:2px; padding:0 10px 0 4px; height:40px;}
 .sp-icon-btn{display:grid; place-items:center; width:26px; height:26px; cursor:pointer; background:transparent; border:0; border-radius:50%; color:var(--ink-secondary); transition:transform .2s, color .14s, background .14s;}
 .sp-icon-btn:hover{color:var(--ink); background:var(--brand-secondary-hover);}
 .sp-icon-btn:active{color:var(--ink); background:#C1D9DC;}
 .sp-icon-btn.is-up{transform:rotate(180deg);}
+.sp-trail-icon{display:grid; place-items:center; width:26px; height:26px; color:var(--ink-secondary); transition:transform .2s;}
+.sp-trail-icon.is-up{transform:rotate(180deg);}
 .sp-clear{color:var(--ink);}
 .sp-clear:hover{color:var(--ink); background:var(--brand-secondary-hover);}
 .sp-clear:active{color:var(--ink); background:#C1D9DC;}
 
 /* chips — neutral gray "Value x" */
-.sp-chip{display:inline-flex; align-items:center; gap:6px; max-width:100%; font-size:13px; font-weight:500;
-  background:var(--chip); color:var(--chip-ink); border:1px solid transparent; padding:3px 5px 3px 9px; border-radius:var(--r-chip); line-height:1.3;}
+.sp-chip{display:inline-flex; align-items:center; gap:4px; max-width:100%; font-size:14px; font-weight:400;
+  background:var(--chip); color:var(--chip-ink); border:1px solid transparent; padding:0 4px 0 8px; border-radius:var(--r-chip); height:20px; line-height:1;}
 .sp-chip-label{min-width:0; overflow-wrap:anywhere; word-break:break-word;}
 .sp-chip.is-trunc{flex:0 1 auto; min-width:6ch;}
 .sp-chip.is-trunc .sp-chip-label{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:13ch;}
@@ -633,13 +632,13 @@ const CSS = `
 /* +N badge + reveal popover */
 .sp-more{position:relative; display:inline-flex; align-items:center; justify-content:center; flex:none; cursor:default;
   font-family:var(--f-mono); font-size:12px; font-weight:700; color:var(--chip-ink); background:var(--chip);
-  border:1px solid var(--chip-line); border-radius:var(--r-chip); padding:4px 8px; outline:none;}
+  border:1px solid var(--chip-line); border-radius:var(--r-chip); padding:0 8px; height:20px; outline:none;}
 .sp-pop{position:absolute; z-index:30; top:calc(100% + 8px); left:0; display:none; flex-wrap:wrap; gap:6px;
   width:max-content; max-width:260px; padding:8px; background:var(--surface); border:1px solid var(--chip-line);
   border-radius:8px; box-shadow:0 10px 28px -10px rgba(16,24,40,.30);}
 .sp-more:hover .sp-pop, .sp-more:focus-within .sp-pop{display:flex;}
-.sp-pop-chip{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:500; color:var(--chip-ink);
-  background:var(--chip); border:1px solid transparent; padding:3px 5px 3px 9px; border-radius:var(--r-chip);}
+.sp-pop-chip{display:inline-flex; align-items:center; gap:4px; font-size:14px; font-weight:400; color:var(--chip-ink);
+  background:var(--chip); border:1px solid transparent; padding:0 4px 0 8px; border-radius:var(--r-chip); height:20px; line-height:1;}
 
 /* hidden measurer */
 .sp-measurer{position:absolute; left:0; top:0; visibility:hidden; pointer-events:none; display:inline-flex; flex-wrap:nowrap; gap:6px; white-space:nowrap;}
@@ -647,10 +646,10 @@ const CSS = `
 
 /* ===== menu ===== */
 .sp-menu{position:absolute; z-index:20; left:0; right:0; top:calc(100% + 2px); list-style:none; margin:0; padding:0;
-  background:var(--surface); border:1px solid var(--chip-line); border-radius:var(--r-menu); max-height:240px; overflow:auto;
-  box-shadow:0 10px 28px -10px rgba(16,24,40,.28); animation:sp-pop .14s ease;}
+  background:var(--surface); border:none; border-radius:var(--r-menu); max-height:240px; overflow:auto;
+  box-shadow:0 3px 14px 2px rgba(0,0,0,0.12), 0 8px 10px 1px rgba(0,0,0,0.14), 0 5px 5px -3px rgba(0,0,0,0.20); animation:sp-pop .14s ease;}
 @keyframes sp-pop{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
-.sp-opt{position:relative; display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; font-size:14px; color:var(--ink-secondary); scroll-margin:6px;}
+.sp-opt{position:relative; display:flex; align-items:center; gap:10px; padding:0 14px; cursor:pointer; font-size:14px; color:var(--ink-secondary); scroll-margin:6px; min-height:40px;}
 .sp-opt.is-active{background:var(--green-fill); color:var(--green-ink);}
 .sp-opt.is-picked{background:var(--green-fill); color:var(--green-ink);}
 .sp-opt.is-picked.is-active{background:#E0F7EA; color:var(--green-ink);}
@@ -663,7 +662,7 @@ const CSS = `
 .sp-opt-create strong{color:var(--ink); font-weight:600;}
 .sp-opt-hint{font-family:var(--f-mono); font-size:10px; color:var(--muted); letter-spacing:.04em;}
 .sp-empty{padding:14px; font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted);}
-.sp-empty-sm{padding:12px; text-transform:none; letter-spacing:0; font-size:13px; text-align:center;}
+.sp-empty-sm{padding:12px; text-transform:none; letter-spacing:0; font-size:14px; text-align:center;}
 
 /* status */
 .sp-status{display:flex; align-items:center; gap:7px; margin:9px 2px 0; font-family:var(--f-mono); font-size:11px; color:var(--muted); letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -671,23 +670,23 @@ const CSS = `
 .sp-status-dot[data-on="true"]{background:var(--green-bar); box-shadow:0 0 0 3px var(--green-fill);}
 
 /* dual list dropdown */
-.sp-dual-badge{display:inline-flex; align-items:center; font-size:14px; font-weight:500; color:var(--ink);
+.sp-dual-badge{display:inline-flex; align-items:center; font-size:14px; font-weight:400; color:var(--ink);
   background:var(--chip); padding:4px 10px; border-radius:var(--r-chip); cursor:pointer; white-space:nowrap;}
 .sp-dual-menu{position:absolute; z-index:20; left:0; right:0; bottom:calc(100% + 2px);
   display:grid; grid-template-columns:1fr 1fr;
-  background:var(--surface); border:1px solid var(--chip-line); border-radius:var(--r-menu);
-  box-shadow:0 -10px 28px -10px rgba(16,24,40,.28); animation:sp-pop-up .14s ease; overflow:hidden;}
+  background:var(--surface); border:none; border-radius:var(--r-menu);
+  box-shadow:0 3px 14px 2px rgba(0,0,0,0.12), 0 8px 10px 1px rgba(0,0,0,0.14), 0 5px 5px -3px rgba(0,0,0,0.20); animation:sp-pop-up .14s ease; overflow:hidden;}
 @keyframes sp-pop-up{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
 .sp-dual-col{display:flex; flex-direction:column; min-width:0;}
-.sp-dual-col + .sp-dual-col{border-left:1px solid var(--line);}
+.sp-dual-col + .sp-dual-col{border-left:1px solid #6B6B6B;}
 .sp-dual-header{display:flex; align-items:center; justify-content:space-between; gap:8px;
-  padding:10px 14px 8px; border-bottom:1px solid var(--line); background:var(--paper);}
-.sp-dual-title{font-family:var(--f-disp); font-weight:600; font-size:12px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  padding:0 14px; height:40px; border-bottom:1px solid #6B6B6B; background:var(--paper);}
+.sp-dual-title{font-family:var(--f-disp); font-weight:600; font-size:14px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .sp-dual-action{font-family:var(--f-mono); font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
   color:var(--brand); background:none; border:0; cursor:pointer; padding:2px 4px; border-radius:3px; white-space:nowrap; flex:none;}
 .sp-dual-action:hover{background:var(--brand-weak); color:var(--brand-hover);}
 .sp-dual-list{list-style:none; margin:0; padding:0; max-height:260px; overflow:auto; flex:1;}
-.sp-dual-item{display:flex; align-items:center; gap:8px; padding:9px 14px; cursor:pointer; font-size:14px; color:var(--ink);}
+.sp-dual-item{display:flex; align-items:center; gap:8px; padding:0 14px; cursor:pointer; font-size:14px; color:var(--ink); min-height:40px;}
 .sp-dual-item:hover{background:var(--green-fill);}
 .sp-dual-item.is-picked{color:var(--ink);}
 .sp-dual-item.is-picked:hover{background:var(--green-fill);}
@@ -698,7 +697,7 @@ const CSS = `
 .sp-dataset{margin-bottom:20px; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:4px; text-align:left;}
 .sp-dataset-title{display:block; font-size:12px; font-weight:500; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:10px;}
 .sp-dataset-list{display:flex; flex-wrap:wrap; gap:6px;}
-.sp-dataset-item{font-size:13px; color:var(--ink); background:var(--chip); padding:4px 10px; border-radius:4px;}
+.sp-dataset-item{font-size:14px; color:var(--ink); background:var(--chip); padding:4px 10px; border-radius:4px;}
 
 /* a11y / motion */
 .sp-root :focus-visible{outline:2px solid var(--brand-focus); outline-offset:2px;}
